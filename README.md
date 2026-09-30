@@ -49,7 +49,18 @@ AgriAssist AI is a single-page, client-side web application designed to empower 
    cd agri_assit_gdg
    ```
 
-2. Open `index.html` directly in any modern web browser or run with a local live server:
+2. Configure your Gemini API Key (Optional for live LLM):
+   - Copy `.env.example` to `.env` and set your key:
+     ```bash
+     cp .env.example .env
+     ```
+   - Or copy `config.example.js` to `config.js`:
+     ```bash
+     cp config.example.js config.js
+     ```
+   - Or enter it directly in the **Ask the Advisor** settings in the UI (saved locally in your browser session).
+
+3. Open `index.html` directly in any modern web browser or run with a local live server:
    ```bash
    # Using Python
    python -m http.server 8000

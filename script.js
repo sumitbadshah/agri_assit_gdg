@@ -4,16 +4,56 @@
  */
 
 /* ==========================================================================
-   1. GLOBAL CONFIGURATION & STATE
+   1. GLOBAL CONFIGURATION, ENV LOADER & STATE
    ========================================================================== */
 const AGRI_CONFIG = {
   appName: "AgriAssist AI",
   version: "1.0.0",
   llmProvider: "gemini",
   geminiModel: "gemini-flash-latest",
-  apiKey: localStorage.getItem("GEMINI_API_KEY") || "", // Loaded securely from localStorage or UI input
+  apiKey: "",
   maxOutputTokens: 500
 };
+
+/**
+ * Resolves the Gemini API Key from:
+ * 1. window.ENV.GEMINI_API_KEY (from config.js or runtime)
+ * 2. AGRI_CONFIG.apiKey
+ * 3. localStorage ("GEMINI_API_KEY")
+ * 4. UI input (#geminiApiKey)
+ */
+function getApiKey() {
+  return (
+    window.ENV?.GEMINI_API_KEY ||
+    AGRI_CONFIG.apiKey ||
+    localStorage.getItem("GEMINI_API_KEY") ||
+    document.getElementById("geminiApiKey")?.value?.trim() ||
+    ""
+  );
+}
+
+// Automatically fetch and parse .env file when hosted on a server
+async function loadDotEnv() {
+  try {
+    const res = await fetch(".env");
+    if (res.ok) {
+      const text = await res.text();
+      const match = text.match(/GEMINI_API_KEY\s*=\s*([^\r\n#]+)/);
+      if (match && match[1]) {
+        const key = match[1].trim();
+        window.ENV = window.ENV || {};
+        window.ENV.GEMINI_API_KEY = key;
+        AGRI_CONFIG.apiKey = key;
+        localStorage.setItem("GEMINI_API_KEY", key);
+        const inputElem = document.getElementById("geminiApiKey");
+        if (inputElem && !inputElem.value) inputElem.value = key;
+      }
+    }
+  } catch (e) {
+    // Ignore fetch error in restricted origins/file protocol
+  }
+}
+loadDotEnv();
 
 let currentSelectedDiseaseImage = null;
 
@@ -376,7 +416,7 @@ function renderChatAdvisor() {
             id="geminiApiKey"
             class="form-input"
             placeholder="Gemini API Key..."
-            value="${AGRI_CONFIG.apiKey || ''}"
+            value="${getApiKey() || ''}"
             oninput="AGRI_CONFIG.apiKey = this.value.trim(); localStorage.setItem('GEMINI_API_KEY', this.value.trim());"
           />
           <span class="api-key-hint">Connected to Google Gemini Flash API. Falls back to offline agronomy guidance if disconnected.</span>
@@ -460,7 +500,7 @@ function getOfflineAdvisorResponse(query) {
  * Universal Gemini LLM Call with guaranteed fallback
  */
 async function callGeminiApi(promptText, systemInstructionText = "") {
-  const apiKey = AGRI_CONFIG.apiKey || document.getElementById("geminiApiKey")?.value?.trim();
+  const apiKey = getApiKey();
 
   if (!apiKey) {
     await new Promise(res => setTimeout(res, 800));
@@ -717,7 +757,7 @@ function clearDiseaseImage(event) {
 }
 
 async function analyzePlantDiseaseWithGemini(imageData) {
-  const apiKey = AGRI_CONFIG.apiKey || document.getElementById("geminiApiKey")?.value?.trim();
+  const apiKey = getApiKey();
 
   // If no API key provided, return offline fallback
   if (!apiKey) {
